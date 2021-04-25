@@ -21,21 +21,28 @@ namespace BloggerImageMove
         {
             // a blogger image path will typically looks like:
             // https://3.bp.blogspot.com/-Ir9dz7Zdbk0/XF9XWwR6uNI/AAAAAAAAB4k/41-TnDNyZIcgHhPiXrxNhvGccXShUxWCQCLcBGAs/s400/ULX3S-libusbK.PNG
+            // https://3.bp.blogspot.com/-Ir9dz7Zdbk0/XF9XWwR6uNI/AAAAAAAAB4k/41-TnDNyZIcgHhPiXrxNhvGccXShUxWCQCLcBGAs/s1600/ULX3S-libusbK.PNG
             // we are interested in that last part: ULX3S-libusbK.PNG
+            // the smaller image (e.g. ./s400/ULX3S-libusbK.PNG) is typically displayed on the web page, wit ha link to the larger image when clicked on to zoom (e.g. ./s1600/ULX3S-libusbK.PNG)
             ImageUrl = ImageUrl.Replace(@"\", @"/"); // ensure we are only using forward slashes
             string[] UrlPathSegments = ImageUrl.Split(@"/");
             if (UrlPathSegments.Length < 1)
             {
                 Console.WriteLine("ERROR: no URL path delimters found! (bad HTML image src tag?)");
             }
+            else if (UrlPathSegments[0].StartsWith("/")) {
+                Console.WriteLine("Skipping image that appears to have already beend converted: {0}", ImageUrl);
+            }
             else
             {
                 Console.WriteLine("Found image src={0}", ImageUrl);
 
                 string ImageFileName = UrlPathSegments[UrlPathSegments.Length - 1]; // the name of the file; e.g. ULX3S-libusbK.PNG
-                string NewImageFile = SaveToDirectory + ImageFileName; // the full path to write image files; e.g. C:\\workspace\\gojimmypi.github.io\\gridster-jekyll-theme/images/ULX3S-libusbK.PNG
+                string ImageSizeDirectory = UrlPathSegments[UrlPathSegments.Length - 2]; // blogspot will typically group images sizes (default widths) into subdirectories such as "s400" with otherwise the same filename
+                string ImageSaveDirectory = SaveToDirectory + "/" + ImageSizeDirectory;
+                string NewImagePath = ImageSaveDirectory + "/" + ImageFileName; // the full path to write image files; e.g. C:\\workspace\\gojimmypi.github.io\\gridster-jekyll-theme/images/s400/ULX3S-libusbK.PNG
 
-                if (File.Exists(NewImageFile))
+                if (File.Exists(NewImagePath))
                 {
                     Console.WriteLine("Skipping file that already exists: {0}.", ImageFileName);
                 }
@@ -47,10 +54,15 @@ namespace BloggerImageMove
                     {
                         imageAsByteArray = webClient.DownloadData(ImageUrl);
                     }
-                    File.WriteAllBytes(NewImageFile, imageAsByteArray);
+                    if (!Directory.Exists(ImageSaveDirectory))
+                    {
+                        Directory.CreateDirectory(ImageSaveDirectory);
+                    }
+                    Console.WriteLine("Saving image: {0}", NewImagePath);
+                    File.WriteAllBytes(NewImagePath, imageAsByteArray);
                 }
 
-                string NewImageURL = NewImagePath + ImageFileName;
+                string NewImageURL = Program.NewImagePath + ImageFileName;
                 HtmlSource = HtmlSource.Replace(ImageUrl, NewImageURL);
             }
         }
