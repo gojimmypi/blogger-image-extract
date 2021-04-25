@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BloggerImageMove": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\workspace\\gojimmypi.github.io\\gridster-jekyll-theme\\_posts\\"
+    }
+  }
+}

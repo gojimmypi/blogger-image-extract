@@ -1,0 +1,9 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+# /BloggerImageMove/.vs/BloggerImageMove/v16
+/BloggerImageMove/bin/Debug/netcoreapp3.1
+/BloggerImageMove/obj
+/BloggerImageMove/.vs/BloggerImageMove/config/applicationhost.config
+/BloggerImageMove/.vs/BloggerImageMove/v16/.suo
