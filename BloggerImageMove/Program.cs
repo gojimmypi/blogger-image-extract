@@ -11,7 +11,7 @@ namespace BloggerImageMove
         static string HtmlSource = "";
         static string SaveToDirectory = "./";
         static string SourceDirectory = "./";
-        static string NewImagePath = "../images/";
+        static string NewImagePath = "/images/";
 
         /// <summary>
         /// returns true if the extension of the filename f is a known image extension, otherwise false.
@@ -68,7 +68,7 @@ namespace BloggerImageMove
             {
                 Console.WriteLine("ERROR: no URL path delimters found! (bad HTML image src tag?)");
             }
-            else if (UrlPathSegments[0].StartsWith("/")) {
+            else if (UrlPathSegments[0].StartsWith("/") || UrlPathSegments[0].StartsWith("../")) {
                 Console.WriteLine("Skipping image that appears to have already beend converted: {0}", ImageUrl);
             }
             else
@@ -90,6 +90,7 @@ namespace BloggerImageMove
                     byte[] imageAsByteArray;
                     using (var webClient = new WebClient())
                     {
+                        // TODO: sometimes this takes a LONG time, why??
                         imageAsByteArray = webClient.DownloadData(ImageUrl);
                     }
                     if (!Directory.Exists(ImageSaveDirectory))
@@ -100,7 +101,7 @@ namespace BloggerImageMove
                     File.WriteAllBytes(NewImagePath, imageAsByteArray);
                 }
 
-                string NewImageURL = Program.NewImagePath + ImageFileName;
+                string NewImageURL = ".." + Program.NewImagePath + ImageFileName; // e.g. ../images/s400/ULX3S-libusbK.PNG
                 HtmlSource = HtmlSource.Replace(ImageUrl, NewImageURL);
             }
         }
