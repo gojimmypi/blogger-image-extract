@@ -11,7 +11,45 @@ namespace BloggerImageMove
         static string HtmlSource = "";
         static string SaveToDirectory = "./";
         static string SourceDirectory = "./";
-        static string NewImagePath = "/images/";
+        static string NewImagePath = "../images/";
+
+        /// <summary>
+        /// returns true if the extension of the filename f is a known image extension, otherwise false.
+        /// </summary>
+        /// <param name="f"></param>
+        /// <returns></returns>
+        static bool IsImageFileName(string f)
+        {
+            bool res = false;
+            if (f == null)
+            {
+                f = "";
+            }
+            f = f.ToLower(); // we want consistent case to compare
+
+            string ThisExtension = Path.GetExtension(f); // reminder this includes the leading period
+
+            switch (ThisExtension)
+            {
+                case null:
+                case "": // can't use string.Empty: see https://stackoverflow.com/questions/2701314/cannot-use-string-empty-as-a-default-value-for-an-optional-parameter
+                    res = false;
+                    break;
+
+                case ".png":
+                case ".bmp":
+                case ".jpg":
+                case ".jpeg":
+                    res = true;
+                    break;
+
+                default:
+                    res = false;
+                    break;
+            }
+
+            return res;
+        }
 
         /// <summary>
         /// given an imageURL, save it locally
@@ -81,7 +119,7 @@ namespace BloggerImageMove
                     FindImages(ThisNode.ChildNodes);
                 }
 
-                // if ThisNode is an image tag, then we'll save it 
+                // if ThisNode is an image tag, then we'll save the image found in the src attribute 
                 if (ThisNode.Name.ToLower() == "img")
                 {
                     foreach (HtmlAttribute ThisAttribute in ThisNode.Attributes)
@@ -95,6 +133,22 @@ namespace BloggerImageMove
                         }
                     }
                 }
+
+                // if ThisNode is an anchor tag, it may or may not be an image
+                if (ThisNode.Name.ToLower() == "a")
+                {
+                    foreach (HtmlAttribute ThisAttribute in ThisNode.Attributes)
+                    {
+                        // show all attribute name/value pairs
+                        // Console.WriteLine("Found Attribute: {0}={1}.", ThisAttribute.Name, ThisAttribute.Value);
+
+                        if (ThisAttribute.Name == "href" && IsImageFileName(ThisAttribute.Value))
+                        {
+                            SaveImageFile(ThisAttribute.Value);
+                        }
+                    }
+                }
+
             }
         }
 
