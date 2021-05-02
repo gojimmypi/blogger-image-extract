@@ -5,170 +5,158 @@ using System.Net;
 
 namespace BloggerImageMove
 {
-    class Program
+    partial class Program
     {
+
+        static string NewLine = Environment.NewLine;
+        static string appendCrLf = "";
 
         static string HtmlSource = "";
         static string SaveToDirectory = "./";
         static string SourceDirectory = "./";
         static string NewImagePath = "/images/";
 
+
+
         /// <summary>
-        /// returns true if the extension of the filename f is a known image extension, otherwise false.
+        /// process all nodes in the supplied HtmlNodeCollection and edit them in place (passing by reference!)
         /// </summary>
-        /// <param name="f"></param>
-        /// <returns></returns>
-        static bool IsImageFileName(string f)
+        /// <param name="c"></param>
+        static void ProcessNode(ref HtmlNode ThisNode)
         {
-            bool res = false;
-            if (f == null)
+            for (int i = ThisNode.ChildNodes.Count -1; i >= 0 ; i--)
             {
-                f = "";
+                // we can't edit an entire collection, so we need to check each child node one at a time
+                HtmlNode ReplaceNode = ThisNode.ChildNodes[i];
+                ProcessNode(ref ReplaceNode);
+                ThisNode.ReplaceChild(ReplaceNode, ThisNode.ChildNodes[i]);
             }
-            f = f.ToLower(); // we want consistent case to compare
 
-            string ThisExtension = Path.GetExtension(f); // reminder this includes the leading period
-
-            switch (ThisExtension)
+            switch (ThisNode.Name.ToLower())
             {
-                case null:
-                case "": // can't use string.Empty: see https://stackoverflow.com/questions/2701314/cannot-use-string-empty-as-a-default-value-for-an-optional-parameter
-                    res = false;
+                case "a":
+                    ReplaceAnchorImage(ref ThisNode);
                     break;
 
-                case ".png":
-                case ".bmp":
-                case ".jpg":
-                case ".jpeg":
-                    res = true;
+                case "img":
+                    ReplaceImageSource(ref ThisNode);
+                    break;
+
+                case "pre":
+                    EnsureNewLineAfter(ref ThisNode);
+                    break;
+
+                case "code":
+                    CleanCodeSegment(ref ThisNode);
+                    break;
+
+                case "div":
+                case "p":
+                    //EnsureNewLineBefore(ref ThisNode);
+                    EnsureNewLineAfter(ref ThisNode);
+
+                    //appendCrLf = NewLine;
+                    //if (ThisNode.InnerHtml.StartsWith(appendCrLf))
+                    //{
+                    //    // already has \n, don't addit
+                    //}
+                    //else
+                    //{
+                    //    ThisNode.InnerHtml = appendCrLf + ThisNode.InnerHtml;
+                    //}
+                    //if (ThisNode.InnerHtml.EndsWith(appendCrLf))
+                    //{
+                    //    // already has \n, don't addit
+                    //}
+                    //else
+                    //{
+                    //    ThisNode.InnerHtml =  ThisNode.InnerHtml + appendCrLf;
+                    //}
+                    //appendCrLf = "";
+                    break;
+
+                case "br":
+                    appendCrLf = NewLine;
+                    EnsureNewLineAfter(ref ThisNode);
+
+                    // HtmlNode h = new HtmlNode(HtmlNodeType.Text, ThisNode.OwnerDocument, 0);
+                    // ThisNode.InnerHtml = "\n";
+                    // appendCrLf = "\n";
+                    //HtmlNode ThisNext = ThisNode.NextSibling;
+                    //if (ThisNext == null )
+                    //{
+
+                    //}
+                    //else
+                    //{
+                    //    HtmlNode NewAFterNode = ThisNode.OwnerDocument.CreateTextNode(appendCrLf);
+                    //    switch (ThisNode.NextSibling.Name.ToLower())
+                    //    {
+                    //        case "div":
+                    //        case "p":
+                    //        case "br":
+                    //            ThisNode.ParentNode.InsertAfter(NewAFterNode, ThisNode);
+                    //            break;
+
+                    //        default:
+                    //            break;
+                    //    }
+                    //}
+                    break;
+
+
+                case "#text":
+                    // we may have determnined from a prior tag, that we wanted to add linefeed
+                    if (ThisNode.InnerHtml.StartsWith(appendCrLf))
+                    {
+                        // already has \n, don't add it
+                    }
+                    else
+                    {
+                        ThisNode.InnerHtml = appendCrLf + ThisNode.InnerHtml;
+                    }
+                    appendCrLf = "";
                     break;
 
                 default:
-                    res = false;
                     break;
             }
-
-            return res;
         }
 
         /// <summary>
-        /// given an imageURL, save it locally
+        /// ensure all new lines are using Environment.NewLine (typically Cr/Lf on Windows, Lf on Mac/Linux)
         /// </summary>
-        /// <param name="ImageUrl"></param>
-        static void SaveImageFile(string ImageUrl)
+        /// <param name="forFile"></param>
+        static void NormalizeLineEndings(string forFile)
         {
-            // a blogger image path will typically looks like:
-            // https://3.bp.blogspot.com/-Ir9dz7Zdbk0/XF9XWwR6uNI/AAAAAAAAB4k/41-TnDNyZIcgHhPiXrxNhvGccXShUxWCQCLcBGAs/s400/ULX3S-libusbK.PNG
-            // https://3.bp.blogspot.com/-Ir9dz7Zdbk0/XF9XWwR6uNI/AAAAAAAAB4k/41-TnDNyZIcgHhPiXrxNhvGccXShUxWCQCLcBGAs/s1600/ULX3S-libusbK.PNG
-            // we are interested in that last part: ULX3S-libusbK.PNG
-            // the smaller image (e.g. ./s400/ULX3S-libusbK.PNG) is typically displayed on the web page, wit ha link to the larger image when clicked on to zoom (e.g. ./s1600/ULX3S-libusbK.PNG)
-            ImageUrl = ImageUrl.Replace(@"\", @"/"); // ensure we are only using forward slashes
-            string[] UrlPathSegments = ImageUrl.Split(@"/");
-            if (UrlPathSegments.Length < 1)
-            {
-                Console.WriteLine("ERROR: no URL path delimters found! (bad HTML image src tag?)");
-            }
-            else if (UrlPathSegments[0].StartsWith("/") || UrlPathSegments[0].StartsWith("../")) {
-                Console.WriteLine("Skipping image that appears to have already beend converted: {0}", ImageUrl);
-            }
-            else
-            {
-                Console.WriteLine("Found image src={0}", ImageUrl);
+            string CrLfNormalize = File.ReadAllText(forFile);
+            CrLfNormalize = CrLfNormalize.Replace("\r\n", "\n");
+            CrLfNormalize = CrLfNormalize.Replace("\n\r", "\n");
+            CrLfNormalize = CrLfNormalize.Replace("\r",  "\n");
+            CrLfNormalize = CrLfNormalize.Replace("\n", Environment.NewLine);
+            File.WriteAllText(forFile, CrLfNormalize);
 
-                string ImageFileName = UrlPathSegments[UrlPathSegments.Length - 1]; // the name of the file; e.g. ULX3S-libusbK.PNG
-                string ImageSizeDirectory = UrlPathSegments[UrlPathSegments.Length - 2]; // blogspot will typically group images sizes (default widths) into subdirectories such as "s400" with otherwise the same filename
-                string ImageSaveDirectory = SaveToDirectory + "/" + ImageSizeDirectory;
-                string NewImagePath = ImageSaveDirectory + "/" + ImageFileName; // the full path to write image files; e.g. C:\\workspace\\gojimmypi.github.io\\gridster-jekyll-theme/images/s400/ULX3S-libusbK.PNG
-
-                if (File.Exists(NewImagePath))
-                {
-                    Console.WriteLine("Skipping file that already exists: {0}.", ImageFileName);
-                }
-                else
-                {
-                    // only download and save files we don't already have
-                    byte[] imageAsByteArray;
-                    using (var webClient = new WebClient())
-                    {
-                        // TODO: sometimes this takes a LONG time, why??
-                        imageAsByteArray = webClient.DownloadData(ImageUrl);
-                    }
-                    if (!Directory.Exists(ImageSaveDirectory))
-                    {
-                        Directory.CreateDirectory(ImageSaveDirectory);
-                    }
-                    Console.WriteLine("Saving image: {0}", NewImagePath);
-                    File.WriteAllBytes(NewImagePath, imageAsByteArray);
-                }
-
-                string NewImageURL = ".." + Program.NewImagePath + ImageFileName; // e.g. ../images/s400/ULX3S-libusbK.PNG
-                HtmlSource = HtmlSource.Replace(ImageUrl, NewImageURL);
-            }
         }
-
         /// <summary>
-        /// find all images in the supplied HtmlNodeCollection and save them
-        /// </summary>
-        /// <param name="c"></param>
-        static void FindImages(HtmlNodeCollection c)
-        {
-            foreach (HtmlNode ThisNode in c)
-            {
-                // if ThisNode has children, we'll first recursively call to process them
-                if (ThisNode.ChildNodes.Count > 0)
-                {
-                    FindImages(ThisNode.ChildNodes);
-                }
-
-                // if ThisNode is an image tag, then we'll save the image found in the src attribute 
-                if (ThisNode.Name.ToLower() == "img")
-                {
-                    foreach (HtmlAttribute ThisAttribute in ThisNode.Attributes)
-                    {
-                        // show all attribute name/value pairs
-                        // Console.WriteLine("Found Attribute: {0}={1}.", ThisAttribute.Name, ThisAttribute.Value);
-
-                        if (ThisAttribute.Name == "src")
-                        {
-                            SaveImageFile(ThisAttribute.Value);
-                        }
-                    }
-                }
-
-                // if ThisNode is an anchor tag, it may or may not be an image
-                if (ThisNode.Name.ToLower() == "a")
-                {
-                    foreach (HtmlAttribute ThisAttribute in ThisNode.Attributes)
-                    {
-                        // show all attribute name/value pairs
-                        // Console.WriteLine("Found Attribute: {0}={1}.", ThisAttribute.Name, ThisAttribute.Value);
-
-                        if (ThisAttribute.Name == "href" && IsImageFileName(ThisAttribute.Value))
-                        {
-                            SaveImageFile(ThisAttribute.Value);
-                        }
-                    }
-                }
-
-            }
-        }
-
-        /// <summary>
-        /// process the file f, extracting all images and saving them
+        /// process the file f, fixing HTML issues and extracting all images and saving them
         /// </summary>
         /// <param name="f"></param>
         static void ProcessFile(string f)
         {
             Console.WriteLine("Processing file: {0} ...",f);
 
+            HtmlDocument document = new HtmlDocument();
             HtmlSource = File.ReadAllText(f);
-            var document = new HtmlDocument();
+            PreProcess(ref HtmlSource); // some things are simply easier with string replacements
+
+            document = new HtmlDocument();
             document.LoadHtml(HtmlSource);
 
-            FindImages(document.DocumentNode.ChildNodes);
+            HtmlNode n = document.DocumentNode;
+            ProcessNode(ref n);
+            File.WriteAllText(f, n.OuterHtml);
 
-            // HtmlSource raw will have been modified to replace all instances of olf image path with new, so we need to save the file
-            File.WriteAllText(f, HtmlSource);
+            NormalizeLineEndings(f);
         }
 
         /// <summary>
@@ -189,7 +177,7 @@ namespace BloggerImageMove
             Console.WriteLine("Will save images files in {0}", SaveToDirectory); // for a jekyll conversion, typically the /images/ directory; e.g. C:\\workspace\\gojimmypi.github.io\\gridster-jekyll-theme/images/
 
             // Process the list of files found in the directory.
-            string[] fileEntries = Directory.GetFiles(SourceDirectory,"*ULX3S*");
+            string[] fileEntries = Directory.GetFiles(SourceDirectory, "2020-11-09-goes17-satellite-image-reception-with.html");
             foreach (string fileName in fileEntries)
                 ProcessFile(fileName);
         }
