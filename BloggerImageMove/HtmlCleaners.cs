@@ -33,62 +33,89 @@ namespace BloggerImageMove
             HtmlSource = HtmlSource.Replace("<code><pre>", "<pre><code>",  StringComparison.CurrentCultureIgnoreCase);
             HtmlSource = HtmlSource.Replace("</pre></code>", "</code></pre>", StringComparison.CurrentCultureIgnoreCase);
 
-            if (ThisSegment.Contains("{% include code_header.html %}") )
-            {
-                // we've probably aldready done the conversion for qall of them
-            }
-            else 
-            {
-                // insert the code header that allows for the "copy to clipboard" feature
-                HtmlSource = HtmlSource.Replace("<pre", NewLine 
-                                                       + "{% include code_header.html %}" 
-                                                       + NewLine
-                                                       + @"<div class=""language highlighter-rouge""><div class=""highlight"">"
-                                                       + NewLine 
-                                                       + "<pre");
-                HtmlSource = HtmlSource.Replace("</pre>", "</pre>"
-                                                        + NewLine
-                                                        + "</div></div>"
-                                                        + NewLine);
-
-
-            }
-
             // <p> and </p> start on new lines
             if (ThisSegment.Split(Environment.NewLine).Length < ThisSegment.Split("<p").Length)
             {
                 // we don't really need to wrap a lone <p> in a <div>
-                HtmlSource = HtmlSource.Replace("<div><p></p></div>", "<br />", StringComparison.CurrentCultureIgnoreCase);
-                HtmlSource = HtmlSource.Replace("<div><p /></div>", "<br />", StringComparison.CurrentCultureIgnoreCase);
+                HtmlSource = HtmlSource.Replace("<div><p></p></div>", 
+                                                "<br />", 
+                                                StringComparison.CurrentCultureIgnoreCase);
+                HtmlSource = HtmlSource.Replace("<div><p /></div>", 
+                                                "<br />", 
+                                                StringComparison.CurrentCultureIgnoreCase);
 
                 // a single, empty <p></p> will be replaced with <br />
-                HtmlSource = HtmlSource.Replace("<p></p>", "<br />", StringComparison.CurrentCultureIgnoreCase);
+                HtmlSource = HtmlSource.Replace("<p></p>", 
+                                                "<br />", 
+                                                StringComparison.CurrentCultureIgnoreCase);
 
                 // each interesting <p.. > starts on a line by itself, as does the repective closing </p>
-                HtmlSource = HtmlSource.Replace("<p", Environment.NewLine + "<p", StringComparison.CurrentCultureIgnoreCase);
-                HtmlSource = HtmlSource.Replace("</p>", Environment.NewLine + "</p>" + Environment.NewLine, StringComparison.CurrentCultureIgnoreCase);
+                HtmlSource = HtmlSource.Replace("<p", 
+                                                Environment.NewLine + "<p", 
+                                                StringComparison.CurrentCultureIgnoreCase);
+
+                HtmlSource = HtmlSource.Replace("</p>", 
+                                                 Environment.NewLine + "</p>" + Environment.NewLine, 
+                                                 StringComparison.CurrentCultureIgnoreCase);
             }
 
             // <div> and </div> start on new lines
             if (ThisSegment.Split(Environment.NewLine).Length < ThisSegment.Split("<div").Length)
             {
                 // we don't really need to wrap a lone <br> in a <div>
-                HtmlSource = HtmlSource.Replace("<div><br></div>", "<br />", StringComparison.CurrentCultureIgnoreCase);
-                HtmlSource = HtmlSource.Replace("<div><br /></div>", "<br />", StringComparison.CurrentCultureIgnoreCase);
+                HtmlSource = HtmlSource.Replace("<div><br></div>",
+                                                "<br />", 
+                                                StringComparison.CurrentCultureIgnoreCase);
+
+                HtmlSource = HtmlSource.Replace("<div><br /></div>", 
+                                                "<br />", 
+                                                StringComparison.CurrentCultureIgnoreCase);
+
                 // all <div ...> tags start on their own line
-                HtmlSource = HtmlSource.Replace("<div", Environment.NewLine + "<div", StringComparison.CurrentCultureIgnoreCase);
-                HtmlSource = HtmlSource.Replace("</div>", Environment.NewLine + "</div>" + Environment.NewLine, StringComparison.CurrentCultureIgnoreCase);
+                HtmlSource = HtmlSource.Replace("<div", 
+                                                Environment.NewLine + "<div", 
+                                                StringComparison.CurrentCultureIgnoreCase);
+
+                HtmlSource = HtmlSource.Replace("</div>", 
+                                                Environment.NewLine + "</div>" + Environment.NewLine, 
+                                                StringComparison.CurrentCultureIgnoreCase);
             }
 
             // <img> starts on a new line
             if (ThisSegment.Split(Environment.NewLine).Length < ThisSegment.Split("<img").Length)
             {
-                HtmlSource = HtmlSource.Replace("<img", Environment.NewLine + "<img", StringComparison.CurrentCultureIgnoreCase);
+                HtmlSource = HtmlSource.Replace("<img", 
+                                                Environment.NewLine + "<img", 
+                                                StringComparison.CurrentCultureIgnoreCase);
             }
+
+            // insert div wrapper for code copy feature
+            // we formatted div's above, so be sure and add the properly formatted ones here, last.
+            if (ThisSegment.Contains("{% include code_header.html %}"))
+            {
+                // we've probably aldready done the conversion for qall of them
+            }
+            else
+            {
+                // insert the code header that allows for the "copy to clipboard" feature
+                HtmlSource = HtmlSource.Replace("<pre", NewLine
+                                                       + "{% include code_header.html %}"
+                                                       + NewLine
+                                                       + @"<div class=""language highlighter-rouge""><div class=""highlight"">"
+                                                       + NewLine
+                                                       + "<pre");
+                HtmlSource = HtmlSource.Replace("</pre>", "</pre>"
+                                                        + NewLine
+                                                        + "</div></div>"
+                                                        + NewLine);
+            }
+
 
             string name = ((System.Reflection.AssemblyCompanyAttribute)System.Reflection.Assembly.GetCallingAssembly().GetCustomAttribute(typeof(System.Reflection.AssemblyCompanyAttribute))).Company;
 
-            HtmlSource = HtmlSource + "<br />" + name + "Blogger Image Move Cleaned: " + DateTime.Now.ToString() + "<br />";
+            // append info at end
+            HtmlSource = HtmlSource + "<br /> Copyright (c)" + name + " all rights reserved. Blogger Image Move Cleaned: " + DateTime.Now.ToString() + "<br />" + NewLine;
+            HtmlSource = HtmlSource + "<!--   Copyright (c)" + name + " all rights reserved.  -->" + NewLine;
         }
 
         /// <summary>
@@ -145,7 +172,7 @@ namespace BloggerImageMove
             }
             else
             {
-                if (ThisNext.InnerText.Trim().StartsWith(NewLine))
+                if (ThisNext.InnerText.Replace(" ","").StartsWith(NewLine))
                 {
                     // thisNext looks *after* the closing tag!
                     // if the next element alread starts with LF, there's nothing to do
@@ -157,7 +184,7 @@ namespace BloggerImageMove
                     switch (ThisNode.NextSibling.Name.ToLower())
                     {
                         case "#text":
-                            ThisNode.InnerHtml = ThisNode.InnerHtml + appendCrLf;
+                            ThisNode.NextSibling.InnerHtml = ThisNode.InnerHtml + appendCrLf;
                             break;
 
                         default:
