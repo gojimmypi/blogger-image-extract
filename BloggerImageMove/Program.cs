@@ -177,7 +177,7 @@ namespace BloggerImageMove
             Console.WriteLine("Will save images files in {0}", SaveToDirectory); // for a jekyll conversion, typically the /images/ directory; e.g. C:\\workspace\\gojimmypi.github.io\\gridster-jekyll-theme/images/
 
             // Process the list of files found in the directory.
-            string[] fileEntries = Directory.GetFiles(SourceDirectory, "2020-11-09-goes17-satellite-image-reception-with.html");
+            string[] fileEntries = Directory.GetFiles(SourceDirectory, "*.html"); // process all HTML files. testing with 2020-11-09-goes17-satellite-image-reception-with.html
             foreach (string fileName in fileEntries)
                 ProcessFile(fileName);
         }
